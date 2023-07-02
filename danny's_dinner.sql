@@ -8,8 +8,8 @@ select
 	s.customer_id,
 	sum(m.price) as total_spent
 from 
-	dannys_dinner.sales s left join dannys_dinner.menu m
-	on s.product_id = m.product_id
+	dannys_dinner.sales s left join dannys_dinner.menu m 
+	using (product_id)
 group by 
 	customer_id
 order by
@@ -40,8 +40,8 @@ select distinct -- we select distinct pairs of (customer_id, product_name) as it
 	cte.customer_id,
 	m.product_name
 from 
-	cte_ranked_orders cte left join dannys_dinner.menu m
-	on cte.product_id = m.product_id
+	cte_ranked_orders cte left join dannys_dinner.menu m 
+	using (product_id)
 where 
 	rank = 1
 order by 
@@ -53,8 +53,8 @@ select
 	m.product_name,
 	count(m.product_id) as times_purchased
 from 
-	dannys_dinner.sales s left join dannys_dinner.menu m
-	on m.product_id = s.product_id
+	dannys_dinner.sales s left join dannys_dinner.menu m 
+	using (product_id)
 group by
 	m.product_name;
 
@@ -67,7 +67,7 @@ with cte_times_ordered as (
 		count(m.product_name) as times_ordered
 	from 
 		dannys_dinner.sales s left join dannys_dinner.menu m
-		on m.product_id = s.product_id
+		using (product_id)
 	group by
 		s.customer_id,
 		s.product_id	
@@ -84,7 +84,7 @@ select
 	m.product_name
 from 
 	cte_times_ordered_ranked cte left join dannys_dinner.menu m
-	on cte.product_id = m.product_id
+	using (product_id)
 where 
 	rank = 1
 order by 
@@ -100,9 +100,9 @@ with cte_ranked_posts_membership_orders as ( -- ranks, per member, the dates of 
 		rank() over (partition by s.customer_id order by order_date)
 	from 
 		dannys_dinner.sales s right join dannys_dinner.members mb
-		on s.customer_id = mb.customer_id
+		using (customer_id)
 		left join dannys_dinner.menu m
-		on m.product_id = s.product_id
+		using (product_id)
 	where 
 		s.order_date >= mb.join_date
 )
@@ -127,9 +127,9 @@ with cte_ranked_pre_membership_orders as ( -- ranks, per member, the dates of th
 		rank() over (partition by s.customer_id order by order_date desc)
 	from 
 		dannys_dinner.sales s right join dannys_dinner.members mb
-		on s.customer_id = mb.customer_id
+		using (customer_id)
 		left join dannys_dinner.menu m
-		on m.product_id = s.product_id	
+		using (product_id)	
 	where 
 		s.order_date < mb.join_date
 )
@@ -151,9 +151,9 @@ with cte_pre_membership_orders as (
 		m.price
 	from 
 		dannys_dinner.sales s right join dannys_dinner.members mb
-		on s.customer_id = mb.customer_id
+		using (customer_id)
 		left join dannys_dinner.menu m
-		on m.product_id = s.product_id	
+		using (product_id)	
 	where 
 		s.order_date < mb.join_date
 )
@@ -185,7 +185,7 @@ select
 	sum(p.points) as total_points	
 from
 	dannys_dinner.sales s left join cte_points p
-	on s.product_id = p.product_id	
+	using (product_id)	
 group by
 	s.customer_id
 order by
@@ -215,12 +215,40 @@ select
 	) as total_points		
 from
 	dannys_dinner.sales s left join cte_points p
-	on s.product_id = p.product_id
+	using (product_id)
 	right join dannys_dinner.members m
-	on m.customer_id = s.customer_id
+	using (customer_id)
 where 
 	s.order_date < '2021-02-01'::date and order_date >= m.join_date
 group by
 	m.customer_id
 order by
-	m.customer_id
+	m.customer_id;
+	
+/*
+Bonus Question
+
+The following questions are related creating basic data tables that Danny and his team can use to 
+quickly derive insights without needing to join the underlying tables using SQL.
+*/
+
+-- 11. For every order in the "sales" table, show its price, the name of the product, and whether the customer 
+--     was a member at the time
+
+select 
+	s.customer_id,
+	s.order_date,
+	mn.product_name,
+	mn.price,
+	case
+		when mb.join_date > order_date then False
+		else True
+	end as "member"
+from
+	dannys_dinner.sales s left join dannys_dinner.menu mn
+	using (product_id)
+	left join dannys_dinner.members mb
+	using (customer_id)
+order by
+	s.customer_id,
+	s.order_date;
