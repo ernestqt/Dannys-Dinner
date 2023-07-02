@@ -119,29 +119,29 @@ order by
 -- 7. Which item was purchased just before the customer became a member?
 -- We assume that, during the joining_date, the member first joins and only then orders. 
 
-	with cte_ranked_pre_membership_orders as ( -- ranks, per member, the dates of their orders before their joining date (desc)
-		select 
-			s.*,
-			mb.join_date,
-			m.product_name,
-			rank() over (partition by s.customer_id order by order_date desc)
-		from 
-			dannys_dinner.sales s right join dannys_dinner.members mb
-			on s.customer_id = mb.customer_id
-			left join dannys_dinner.menu m
-			on m.product_id = s.product_id	
-		where 
-			s.order_date < mb.join_date
-	)
-	select distinct -- we select distinct pairs of (customer_id, product_name) as it could be possible for a member to order twice the same product on the first order after joining 
-		customer_id,
-		product_name
+with cte_ranked_pre_membership_orders as ( -- ranks, per member, the dates of their orders before their joining date (desc)
+	select 
+		s.*,
+		mb.join_date,
+		m.product_name,
+		rank() over (partition by s.customer_id order by order_date desc)
 	from 
-		cte_ranked_pre_membership_orders
+		dannys_dinner.sales s right join dannys_dinner.members mb
+		on s.customer_id = mb.customer_id
+		left join dannys_dinner.menu m
+		on m.product_id = s.product_id	
 	where 
-		rank = 1
-	order by 
-		customer_id;
+		s.order_date < mb.join_date
+)
+select distinct -- we select distinct pairs of (customer_id, product_name) as it could be possible for a member to order twice the same product on the first order after joining 
+	customer_id,
+	product_name
+from 
+	cte_ranked_pre_membership_orders
+where 
+	rank = 1
+order by 
+	customer_id;
 
 -- 8. What is the total items and amount spent for each member before they became a member?
 with cte_pre_membership_orders as (
